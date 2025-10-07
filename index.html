@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi - Senior High School</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library untuk Grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Library untuk Ekspor PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <!-- Library untuk Ekspor Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .tab-btn.active { border-color: #4f46e5; color: #4f46e5; background-color: #eef2ff; }
+        .modal-content { animation: zoomIn 0.3s ease-out; }
+        @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .printable-area, .printable-area * {
+                visibility: visible;
+            }
+            .printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Container Utama -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white shadow-md p-4 print:hidden">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <!-- LOGO DIUBAH DI SINI -->
+                    <img src="https://sman1dramaga.sch.id/wp-content/uploads/2023/07/logo-sman-1-dramaga-300x300.png" alt="Logo SMAN 1 Dramaga" class="h-10 w-10">
+                    <h1 class="text-2xl font-bold text-gray-800">Senior High School</h1>
+                </div>
+                <div id="header-info" class="text-right hidden">
+                    <p id="current-date" class="font-semibold text-indigo-600"></p>
+                    <p class="text-sm text-gray-500">Sistem Absensi Online</p>
+                </div>
+                <button id="logout-btn" class="hidden ml-4 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Logout</button>
+            </div>
+        </header>
+
+        <!-- Login View -->
+        <div id="login-view" class="flex-grow flex items-center justify-center p-4 fade-in">
+            <div class="bg-white max-w-md w-full p-8 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold text-center mb-6">Login Sistem Absensi</h2>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Sandi</label>
+                        <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-transform duration-200 hover:scale-105">Login</button>
+                    <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
+                     <div class="text-xs text-gray-400 mt-4 text-center">
+                        <p>Coba login sebagai admin: <strong>admin / admin123</strong></p>
+                        <p>Coba login sebagai guru: <strong>guru / guru123</strong></p>
+                        <p>Coba login sebagai siswa: <strong>rina / 123</strong></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main App View (Hidden by default) -->
+        <main id="app-view" class="container mx-auto p-4 md:p-6 flex-grow hidden">
+            <!-- Student View -->
+            <div id="student-view" class="hidden fade-in">
+                <!-- Konten Siswa akan dirender oleh JS -->
+            </div>
+
+            <!-- Teacher View -->
+            <div id="teacher-view" class="hidden fade-in">
+                <div class="mb-6 border-b border-gray-200 print:hidden">
+                    <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
+                        <button data-tab="dashboard" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button>
+                        <button data-tab="daily-recap" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Rekap Harian</button>
+                        <button data-tab="reports" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Laporan</button>
+                        <button data-tab="manage-students" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Manajemen Siswa</button>
+                    </nav>
+                </div>
+                
+                <!-- Tab Content -->
+                <div id="tab-content">
+                    <!-- Semua konten tab akan dirender oleh JS -->
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="admin-view" class="hidden fade-in">
+                 <!-- Konten Admin akan dirender oleh JS -->
+            </div>
+        </main>
+        
+        <footer class="text-center p-4 text-sm text-gray-500 print:hidden">
+            &copy; 2025 Senior High School. Dibuat untuk Sistem Absensi.
+        </footer>
+    </div>
+    
+    <!-- Modal for general messages and student management -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div id="modal-content" class="modal-content bg-white rounded-lg shadow-2xl max-w-md w-full">
+            <!-- Konten Modal akan dirender oleh JS -->
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+    // =================================================================================
+    // DATABASE & STATE MANAGEMENT (SIMULASI)
+    // =================================================================================
+
+    let users = [
+        { id: 1, username: 'rina', password: '123', role: 'student' },
+        { id: 6, username: 'guru', password: 'guru123', role: 'teacher' },
+        { id: 7, username: 'admin', password: 'admin123', role: 'admin' }
+    ];
+
+    let students = [
+        { id: 1, name: 'Rina Amelia', class: 'XII-A' },
+    ];
+
+    let attendanceRecords = []; // { studentId, date(YYYY-MM-DD), status, timestamp, message, photoUrl }
+    let loggedInUser = null;
+    let activeChartInstances = {};
+
+    const LATE_HOUR = 7; // Batas jam keterlambatan (07:00)
+    const STATUS_OPTIONS = ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Dispen', 'Alpa'];
+    const STATUS_COLORS = {
+        'Hadir': { bg: 'bg-green-100', text: 'text-green-800' },
+        'Terlambat': { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+        'Izin': { bg: 'bg-blue-100', text: 'text-blue-800' },
+        'Sakit': { bg: 'bg-orange-100', text: 'text-orange-800' },
+        'Dispen': { bg: 'bg-purple-100', text: 'text-purple-800' },
+        'Alpa': { bg: 'bg-red-100', text: 'text-red-800' },
+        'Belum Absen': { bg: 'bg-gray-100', text: 'text-gray-800' }
+    };
+
+    // =================================================================================
+    // DOM ELEMENTS
+    // =================================================================================
+    const loginView = document.getElementById('login-view');
+    const appView = document.getElementById('app-view');
+    const loginForm = document.getElementById('login-form');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loginError = document.getElementById('login-error');
+    const logoutBtn = document.getElementById('logout-btn');
+    const headerInfo = document.getElementById('header-info');
+    const currentDateEl = document.getElementById('current-date');
+    const studentView = document.getElementById('student-view');
+    const teacherView = document.getElementById('teacher-view');
+    const adminView = document.getElementById('admin-view');
+    const tabContainer = document.querySelector('nav[aria-label="Tabs"]');
+    const tabContent = document.getElementById('tab-content');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modal-content');
+
+    // =================================================================================
+    // UTILITY FUNCTIONS
+    // =================================================================================
+    const today = () => new Date().toISOString().slice(0, 10);
+    const formatTime = (date) => date ? new Date(date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const getStatusColor = (status) => STATUS_COLORS[status] || STATUS_COLORS['Belum Absen'];
+
+    // =================================================================================
+    // MOCK DATA GENERATION
+    // =================================================================================
+    function generateMockData() {
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 3);
+        const endDate = new Date();
+
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            if (d.getDay() === 0 || d.getDay() === 6) continue;
+
+            const dateStr = d.toISOString().slice(0, 10);
+            students.forEach(student => {
+                const random = Math.random();
+                let status = 'Alpa';
+                if (random < 0.85) status = 'Hadir';
+                else if (random < 0.90) status = 'Terlambat';
+                else if (random < 0.94) status = 'Sakit';
+                else if (random < 0.98) status = 'Izin';
+
+                if(status !== 'Alpa') {
+                    const timestamp = new Date(dateStr);
+                    const hour = status === 'Terlambat' ? 7 + Math.floor(Math.random() * 2) : 6;
+                    timestamp.setHours(hour, Math.floor(Math.random() * 60));
+                    
+                    let record = {
+                        studentId: student.id,
+                        date: dateStr,
+                        status: status,
+                        timestamp: timestamp.toISOString(),
+                        message: null,
+                        photoUrl: null
+                    };
+                    
+                    if(status === 'Sakit' && Math.random() > 0.5) {
+                        record.message = 'Demam dan pusing dari semalam.';
+                        record.photoUrl = 'https://placehold.co/400x300/F97316/FFFFFF?text=Surat+Dokter';
+                    }
+
+                    attendanceRecords.push(record);
+                } else {
+                     attendanceRecords.push({ studentId: student.id, date: dateStr, status: 'Alpa', timestamp: null, message: null, photoUrl: null });
+                }
+            });
+        }
+    }
+    
+    // =================================================================================
+    // AUTHENTICATION
+    // =================================================================================
+    function handleLogin(e) {
+        e.preventDefault();
+        const user = users.find(u => u.username === usernameInput.value && u.password === passwordInput.value);
+        if (user) {
+            loggedInUser = user;
+            loginView.classList.add('hidden');
+            appView.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+            headerInfo.classList.remove('hidden');
+            loginError.textContent = '';
+            
+            studentView.classList.add('hidden');
+            teacherView.classList.add('hidden');
+            adminView.classList.add('hidden');
+
+            if (user.role === 'student') {
+                studentView.classList.remove('hidden');
+                renderStudentView();
+            } else if (user.role === 'teacher') {
+                teacherView.classList.remove('hidden');
+                renderTeacherView();
+            } else if (user.role === 'admin') {
+                adminView.classList.remove('hidden');
+                renderAdminView();
+            }
+        } else {
+            loginError.textContent = 'Username atau sandi salah!';
+        }
+    }
+
+    function handleLogout() {
+        loggedInUser = null;
+        appView.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+        headerInfo.classList.add('hidden');
+        studentView.classList.add('hidden');
+        teacherView.classList.add('hidden');
+        adminView.classList.add('hidden');
+        loginView.classList.remove('hidden');
+        passwordInput.value = ''; 
+    }
+
+    // =================================================================================
+    // RENDER FUNCTIONS - STUDENT
+    // =================================================================================
+    function renderStudentView() {
+        const student = students.find(s => s.id === loggedInUser.id);
+        const todaysRecord = attendanceRecords.find(r => r.studentId === student.id && r.date === today());
+        const status = todaysRecord ? todaysRecord.status : 'Belum Absen';
+        const hasAttended = !!todaysRecord;
+
+        const { bg, text } = getStatusColor(status);
+
+        studentView.innerHTML = `
+            <div class="bg-white max-w-lg mx-auto p-8 rounded-xl shadow-lg text-center">
+                <img src="https://placehold.co/100x100/E9D5FF/4C1D95?text=${student.name.charAt(0)}" alt="Foto Siswa" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-indigo-200">
+                <h2 class="text-2xl font-bold mb-1">${student.name}</h2>
+                <p class="text-gray-500 mb-6">Kelas ${student.class}</p>
+                <div class="p-4 rounded-lg mb-6 transition-colors duration-300 ${bg}">
+                    <p class="font-semibold text-sm">STATUS HARI INI</p>
+                    <p class="text-2xl font-bold ${text}">${status}</p>
+                </div>
+                <div class="space-y-3">
+                    <button ${hasAttended ? 'disabled' : ''} data-status="Hadir" class="attendance-btn w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-transform duration-200 hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100">Hadir (Absen Sekarang)</button>
+                    <div class="flex space-x-3">
+                        <button ${hasAttended ? 'disabled' : ''} data-status="Izin" class="proof-btn w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400">Ajukan Izin</button>
+                        <button ${hasAttended ? 'disabled' : ''} data-status="Sakit" class="proof-btn w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400">Lapor Sakit</button>
+                        <button ${hasAttended ? 'disabled' : ''} data-status="Dispen" class="proof-btn w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-400">Ajukan Dispen</button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3">${todaysRecord ? `Laporan dikirim pukul ${formatTime(todaysRecord.timestamp)}` : 'Batas waktu absen hadir: 07:00'}</p>
+            </div>
+        `;
+        
+        document.querySelector('.attendance-btn')?.addEventListener('click', handleSimpleAttendance);
+        document.querySelectorAll('.proof-btn').forEach(btn => btn.addEventListener('click', (e) => renderSubmissionModal(e.target.dataset.status)));
+    }
+    
+    function handleSimpleAttendance(e) {
+        let status = e.target.dataset.status;
+        const now = new Date();
+        if (status === 'Hadir' && now.getHours() >= LATE_HOUR) {
+            status = 'Terlambat';
+        }
+        attendanceRecords.push({
+            studentId: loggedInUser.id,
+            date: today(),
+            status: status,
+            timestamp: now.toISOString(),
+            message: null,
+            photoUrl: null
+        });
+        showModal('success', `Status Anda sebagai '${status}' telah berhasil dicatat.`);
+        renderStudentView();
+    }
+
+    function renderSubmissionModal(status) {
+        modalContent.innerHTML = `
+            <div class="p-6">
+                <h3 class="text-xl font-bold mb-4">Formulir Pengajuan ${status}</h3>
+                <form id="proof-form">
+                    <div class="mb-4">
+                        <label for="message" class="block text-sm font-medium text-gray-700">Pesan/Keterangan</label>
+                        <textarea id="message" name="message" rows="3" class="mt-1 w-full p-2 border rounded" placeholder="Contoh: Mengikuti lomba FLS2N di balai kota." required></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="photo" class="block text-sm font-medium text-gray-700">Unggah Foto Bukti (Opsional)</label>
+                        <input type="file" id="photo" name="photo" accept="image/*" class="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"/>
+                        <img id="image-preview" class="hidden mt-2 rounded-lg max-h-40"/>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancel-btn" class="bg-gray-200 px-4 py-2 rounded">Batal</button>
+                        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded">Kirim Laporan</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        showModal();
+        
+        const photoInput = document.getElementById('photo');
+        const imagePreview = document.getElementById('image-preview');
+
+        photoInput.addEventListener('change', () => {
+            const file = photoInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('proof-form').addEventListener('submit', (e) => handleProofSubmission(e, status));
+        document.getElementById('cancel-btn').addEventListener('click', closeModal);
+    }
+    
+    function handleProofSubmission(e, status) {
+        e.preventDefault();
+        const message = e.target.message.value;
+        const photoFile = e.target.photo.files[0];
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+             attendanceRecords.push({
+                studentId: loggedInUser.id,
+                date: today(),
+                status: status,
+                timestamp: new Date().toISOString(),
+                message: message,
+                photoUrl: photoFile ? reader.result : null // Simpan sebagai Data URL
+            });
+            closeModal();
+            showModal('success', `Laporan ${status} Anda telah berhasil dikirim.`);
+            renderStudentView();
+        };
+
+        if (photoFile) {
+            reader.readAsDataURL(photoFile);
+        } else {
+            reader.onloadend(); // Langsung jalankan jika tidak ada foto
+        }
+    }
+
+
+    // =================================================================================
+    // RENDER FUNCTIONS - TEACHER
+    // =================================================================================
+    function renderTeacherView(activeTab = 'dashboard') {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === activeTab);
+            btn.classList.toggle('border-transparent', btn.dataset.tab !== activeTab);
+            btn.classList.toggle('text-gray-500', btn.dataset.tab !== activeTab);
+        });
+
+        Object.values(activeChartInstances).forEach(chart => chart.destroy());
+        
+        switch (activeTab) {
+            case 'dashboard': renderDashboardTab(); break;
+            case 'daily-recap': renderDailyRecapTab(); break;
+            case 'reports': renderReportsTab(); break;
+            case 'manage-students': renderManageStudentsTab(); break;
+        }
+    }
+    
+    function renderDashboardTab() {
+        const todaysRecords = attendanceRecords.filter(r => r.date === today());
+        const stats = { 'Hadir': 0, 'Terlambat': 0, 'Izin': 0, 'Sakit': 0, 'Dispen': 0, 'Alpa': 0 };
+        todaysRecords.forEach(r => { if(stats[r.status] !== undefined) stats[r.status]++; });
+        const present = stats['Hadir'] + stats['Terlambat'];
+        const absent = students.length - todaysRecords.length + stats['Alpa'];
+
+        tabContent.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Total Siswa</p><p class="text-2xl font-bold">${students.length}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Hadir Hari Ini</p><p class="text-2xl font-bold text-green-600">${present}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Terlambat</p><p class="text-2xl font-bold text-yellow-600">${stats.Terlambat}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Tidak Hadir</p><p class="text-2xl font-bold text-red-600">${absent + stats.Izin + stats.Sakit + stats.Dispen}</p></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow flex flex-col h-80"><h3 class="font-bold mb-4">Ringkasan Kehadiran Hari Ini</h3><div class="relative flex-1"><canvas id="daily-pie-chart"></canvas></div></div>
+                <div class="bg-white p-6 rounded-lg shadow flex flex-col h-80"><h3 class="font-bold mb-4">Tren Kehadiran (5 Hari Terakhir)</h3><div class="relative flex-1"><canvas id="weekly-bar-chart"></canvas></div></div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow mt-6"><h3 class="font-bold mb-4">Notifikasi Terbaru</h3><div id="notifications"></div></div>
+        `;
+        renderDashboardCharts(stats);
+        renderNotifications();
+    }
+    
+    function renderDailyRecapTab() {
+        tabContent.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Rekap Kehadiran Harian (${formatDate(today())})</h3>
+                    <div>
+                        <button id="export-daily-pdf" class="bg-red-500 text-white px-3 py-1 rounded text-sm">Export PDF</button>
+                        <button id="export-daily-excel" class="bg-green-500 text-white px-3 py-1 rounded text-sm ml-2">Export Excel</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="daily-recap-table" class="w-full text-sm">
+                        <thead class="bg-gray-50"><tr>
+                            <th class="p-3 text-left">Nama Siswa</th><th class="p-3 text-left">Status</th><th class="p-3 text-left">Waktu Lapor</th><th class="p-3 text-left">Keterangan</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        const tbody = tabContent.querySelector('tbody');
+        students.forEach(s => {
+            const record = attendanceRecords.find(r => r.studentId === s.id && r.date === today());
+            const status = record ? record.status : 'Belum Absen';
+            const {bg, text} = getStatusColor(status);
+            let proofButton = '-';
+            if(record && (record.message || record.photoUrl)) {
+                proofButton = `<button data-studentid="${s.id}" data-date="${today()}" class="view-proof-btn text-indigo-600 hover:underline text-xs">Lihat Bukti</button>`;
+            }
+
+            tbody.innerHTML += `
+                <tr class="border-b">
+                    <td class="p-3">${s.name}</td>
+                    <td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${bg} ${text}">${status}</span></td>
+                    <td class="p-3">${record ? formatTime(record.timestamp) : '-'}</td>
+                    <td class="p-3">${proofButton}</td>
+                </tr>
+            `;
+        });
+        
+        document.querySelectorAll('.view-proof-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            const { studentid, date } = e.target.dataset;
+            showProofModal(studentid, date);
+        }));
+
+        document.getElementById('export-daily-pdf').addEventListener('click', () => exportToPDF('daily-recap-table', `Rekap Harian ${today()}`));
+        document.getElementById('export-daily-excel').addEventListener('click', () => exportToExcel('daily-recap-table', `Rekap Harian ${today()}`));
+    }
+
+    function showProofModal(studentId, date) {
+        const student = students.find(s => s.id == studentId);
+        const record = attendanceRecords.find(r => r.studentId == studentId && r.date === date);
+        
+        if (!record) return;
+
+        modalContent.innerHTML = `
+            <div class="p-6">
+                <h3 class="text-xl font-bold mb-2">Bukti Laporan - ${student.name}</h3>
+                <p class="text-sm text-gray-500 mb-4">${formatDate(date)} - Status: <span class="font-semibold">${record.status}</span></p>
+                <div class="mb-4">
+                    <h4 class="font-semibold mb-1">Pesan:</h4>
+                    <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">${record.message || 'Tidak ada pesan.'}</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-1">Foto:</h4>
+                    ${record.photoUrl ? `<img src="${record.photoUrl}" alt="Bukti Foto" class="rounded-lg w-full h-auto object-contain max-h-80">` : '<p class="text-gray-500">Tidak ada foto dilampirkan.</p>'}
+                </div>
+                <div class="text-right mt-6">
+                     <button type="button" id="modal-close" class="bg-indigo-600 text-white px-4 py-2 rounded">Tutup</button>
+                </div>
+            </div>
+        `;
+        showModal();
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+    }
+
+    function renderReportsTab() {
+        tabContent.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow">
+                 <h3 class="text-xl font-bold mb-4">Buat Laporan Kehadiran</h3>
+                 <div class="flex items-center space-x-4 mb-4">
+                    <select id="report-type" class="p-2 border rounded">
+                        <option value="weekly">Mingguan</option>
+                        <option value="monthly">Bulanan</option>
+                    </select>
+                    <input type="date" id="report-date" class="p-2 border rounded" value="${today()}">
+                    <button id="generate-report-btn" class="bg-indigo-600 text-white px-4 py-2 rounded">Buat Laporan</button>
+                 </div>
+                 <div id="report-output"></div>
+            </div>
+        `;
+        document.getElementById('generate-report-btn').addEventListener('click', generateReport);
+    }
+    
+    function renderManageStudentsTab() {
+         tabContent.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Manajemen Data Siswa</h3>
+                    <button id="add-student-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Tambah Siswa Baru</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50"><tr>
+                            <th class="p-3 text-left">ID</th><th class="p-3 text-left">Nama Siswa</th><th class="p-3 text-left">Kelas</th><th class="p-3 text-left">Username</th><th class="p-3 text-left">Aksi</th>
+                        </tr></thead>
+                        <tbody>${students.map(s => {
+                            const user = users.find(u => u.id === s.id);
+                            return `<tr class="border-b">
+                                <td class="p-3">${s.id}</td>
+                                <td class="p-3">${s.name}</td>
+                                <td class="p-3">${s.class}</td>
+                                <td class="p-3">${user ? user.username : '-'}</td>
+                                <td class="p-3">
+                                    <button data-id="${s.id}" class="edit-student-btn text-blue-500 hover:underline text-xs">Edit</button>
+                                    <button data-id="${s.id}" class="delete-student-btn text-red-500 hover:underline text-xs ml-2">Hapus</button>
+                                </td>
+                            </tr>`;
+                        }).join('')}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('add-student-btn').addEventListener('click', () => renderUserFormModal('student'));
+        document.querySelectorAll('.edit-student-btn').forEach(btn => btn.addEventListener('click', (e) => renderUserFormModal('student', e.target.dataset.id)));
+        document.querySelectorAll('.delete-student-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteUser(e.target.dataset.id)));
+    }
+
+
+    // =================================================================================
+    // RENDER FUNCTIONS - ADMIN
+    // =================================================================================
+    function renderAdminView(activeTab = 'daily-recap') {
+        adminView.innerHTML = `
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-6" id="admin-tabs">
+                    <button data-tab="daily-recap" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Rekap Harian</button>
+                    <button data-tab="manage-students" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Kelola Siswa</button>
+                    <button data-tab="manage-staff" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Kelola Guru & Admin</button>
+                </nav>
+            </div>
+            <div id="admin-tab-content"></div>
+        `;
+        
+        document.getElementById('admin-tabs').addEventListener('click', (e) => {
+            if (e.target.matches('.admin-tab-btn')) {
+                renderAdminView(e.target.dataset.tab);
+            }
+        });
+
+        document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === activeTab);
+            btn.classList.toggle('border-transparent', btn.dataset.tab !== activeTab);
+            btn.classList.toggle('text-gray-500', btn.dataset.tab !== activeTab);
+        });
+        
+        if (activeTab === 'daily-recap') {
+            renderAdminDailyRecapTab();
+        } else if(activeTab === 'manage-students') {
+            renderUserManagementTable('student');
+        } else {
+            renderUserManagementTable('staff');
+        }
+    }
+    
+    function renderAdminDailyRecapTab() {
+        const targetDiv = document.getElementById('admin-tab-content');
+        targetDiv.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Rekap Kehadiran Harian (${formatDate(today())})</h3>
+                    <div>
+                        <button id="export-daily-pdf-admin" class="bg-red-500 text-white px-3 py-1 rounded text-sm">Export PDF</button>
+                        <button id="export-daily-excel-admin" class="bg-green-500 text-white px-3 py-1 rounded text-sm ml-2">Export Excel</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="admin-daily-recap-table" class="w-full text-sm">
+                        <thead class="bg-gray-50"><tr>
+                            <th class="p-3 text-left">Nama Siswa</th>
+                            <th class="p-3 text-left">Status</th>
+                            <th class="p-3 text-left">Waktu Lapor</th>
+                            <th class="p-3 text-left">Keterangan</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        const tbody = targetDiv.querySelector('tbody');
+        students.forEach(s => {
+            const record = attendanceRecords.find(r => r.studentId === s.id && r.date === today());
+            const status = record ? record.status : 'Belum Absen';
+            const {bg, text} = getStatusColor(status);
+            
+            let keteranganCell = record?.message || '-';
+            if (record && (record.message || record.photoUrl)) {
+                keteranganCell += ` <button data-studentid="${s.id}" data-date="${today()}" class="view-proof-btn text-indigo-600 hover:underline text-xs font-semibold ml-1">[Lihat Detail]</button>`;
+            }
+
+            tbody.innerHTML += `
+                <tr class="border-b">
+                    <td class="p-3">${s.name}</td>
+                    <td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${bg} ${text}">${status}</span></td>
+                    <td class="p-3">${record ? formatTime(record.timestamp) : '-'}</td>
+                    <td class="p-3">${keteranganCell}</td>
+                </tr>
+            `;
+        });
+        
+        targetDiv.querySelectorAll('.view-proof-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            const { studentid, date } = e.target.dataset;
+            showProofModal(studentid, date);
+        }));
+
+        document.getElementById('export-daily-pdf-admin').addEventListener('click', () => exportToPDF('admin-daily-recap-table', `Rekap Harian ${today()}`));
+        document.getElementById('export-daily-excel-admin').addEventListener('click', () => exportToExcel('admin-daily-recap-table', `Rekap Harian ${today()}`));
+    }
+
+    function renderUserManagementTable(roleType) {
+        const targetDiv = document.getElementById('admin-tab-content');
+        const isStudent = roleType === 'student';
+        const title = isStudent ? 'Siswa' : 'Guru & Admin';
+        const userList = isStudent ? users.filter(u => u.role === 'student') : users.filter(u => u.role === 'teacher' || u.role === 'admin');
+        const roleToAdd = isStudent ? 'student' : 'teacher'; // Default role to add
+        
+        let tableHeaders = `<th class="p-3 text-left">ID</th><th class="p-3 text-left">Nama</th>`;
+        if(isStudent) tableHeaders += `<th class="p-3 text-left">Kelas</th>`;
+        tableHeaders += `<th class="p-3 text-left">Username</th><th class="p-3 text-left">Role</th><th class="p-3 text-left">Aksi</th>`;
+
+        let tableRows = userList.map(user => {
+            const studentInfo = isStudent ? students.find(s => s.id === user.id) : null;
+            const name = studentInfo ? studentInfo.name : user.username;
+            
+            let row = `<tr class="border-b">
+                <td class="p-3">${user.id}</td>
+                <td class="p-3">${name}</td>`;
+            if(isStudent) row += `<td class="p-3">${studentInfo.class}</td>`;
+            row += `<td class="p-3">${user.username}</td>
+                <td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-800'}">${user.role}</span></td>
+                <td class="p-3">
+                    <button data-id="${user.id}" data-role="${user.role}" class="edit-user-btn text-blue-500 hover:underline text-xs">Edit</button>
+                    ${ user.id !== loggedInUser.id ? `<button data-id="${user.id}" class="delete-user-btn text-red-500 hover:underline text-xs ml-2">Hapus</button>` : '' }
+                </td>
+            </tr>`;
+            return row;
+        }).join('');
+
+        targetDiv.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Manajemen Akun ${title}</h3>
+                    <button id="add-user-btn" data-role="${roleToAdd}" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Tambah ${title} Baru</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50"><tr>${tableHeaders}</tr></thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('add-user-btn').addEventListener('click', (e) => renderUserFormModal(e.target.dataset.role));
+        document.querySelectorAll('.edit-user-btn').forEach(btn => btn.addEventListener('click', (e) => renderUserFormModal(e.target.dataset.role, e.target.dataset.id)));
+        document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteUser(e.target.dataset.id)));
+    }
+
+
+    // =================================================================================
+    // CHART RENDERING
+    // =================================================================================
+    function renderDashboardCharts(stats) {
+        const dailyCtx = document.getElementById('daily-pie-chart').getContext('2d');
+        activeChartInstances.daily = new Chart(dailyCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Dispen', 'Alpa/Belum Hadir'],
+                datasets: [{
+                    data: [stats.Hadir, stats.Terlambat, stats.Izin, stats.Sakit, stats.Dispen, students.length - (stats.Hadir + stats.Terlambat + stats.Izin + stats.Sakit + stats.Dispen)],
+                    backgroundColor: ['#10B981', '#F59E0B', '#3B82F6', '#F97316', '#8B5CF6', '#EF4444']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        
+        const weeklyLabels = [];
+        const weeklyData = [];
+        for (let i = 4; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().slice(0, 10);
+            weeklyLabels.push(date.toLocaleDateString('id-ID', { weekday: 'short' }));
+            const presentCount = attendanceRecords.filter(r => r.date === dateStr && (r.status === 'Hadir' || r.status === 'Terlambat')).length;
+            weeklyData.push(presentCount);
+        }
+
+        const weeklyCtx = document.getElementById('weekly-bar-chart').getContext('2d');
+        activeChartInstances.weekly = new Chart(weeklyCtx, {
+            type: 'bar',
+            data: {
+                labels: weeklyLabels,
+                datasets: [{
+                    label: 'Jumlah Siswa Hadir',
+                    data: weeklyData,
+                    backgroundColor: '#4f46e5'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // =================================================================================
+    // NOTIFICATIONS & REPORTS
+    // =================================================================================
+    function renderNotifications() {
+        const container = document.getElementById('notifications');
+        const todaysLate = attendanceRecords.filter(r => r.date === today() && r.status === 'Terlambat');
+        const todaysWithProof = attendanceRecords.filter(r => r.date === today() && (r.status === 'Sakit' || r.status === 'Izin' || r.status === 'Dispen'));
+        
+        let html = '';
+        todaysWithProof.forEach(r => {
+            const student = students.find(s => s.id === r.studentId);
+             html += `<p class="text-sm border-b py-2"><span class="font-bold text-blue-600">[LAPORAN]</span> ${student.name} mengajukan <strong>${r.status}</strong>. <button data-studentid="${student.id}" data-date="${today()}" class="view-proof-btn text-indigo-600 hover:underline">Lihat</button></p>`;
+        });
+        todaysLate.forEach(r => {
+            const student = students.find(s => s.id === r.studentId);
+            html += `<p class="text-sm border-b py-2"><span class="font-bold text-yellow-600">[TERLAMBAT]</span> ${student.name} absen pada pukul ${formatTime(r.timestamp)}.</p>`;
+        });
+
+        container.innerHTML = html || '<p class="text-sm text-gray-500">Tidak ada notifikasi baru.</p>';
+        
+        container.querySelectorAll('.view-proof-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            const { studentid, date } = e.target.dataset;
+            showProofModal(studentid, date);
+        }));
+    }
+
+    function generateReport() {
+        const type = document.getElementById('report-type').value;
+        const selectedDate = new Date(document.getElementById('report-date').value);
+        const outputDiv = document.getElementById('report-output');
+        
+        let startDate, endDate;
+        if (type === 'monthly') {
+            startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+            endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+        } else {
+            const dayOfWeek = selectedDate.getDay();
+            startDate = new Date(selectedDate);
+            startDate.setDate(selectedDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+        }
+
+        const startDateStr = startDate.toISOString().slice(0, 10);
+        const endDateStr = endDate.toISOString().slice(0, 10);
+
+        const relevantRecords = attendanceRecords.filter(r => r.date >= startDateStr && r.date <= endDateStr);
+        const reportData = students.map(s => {
+            const studentRecords = relevantRecords.filter(r => r.studentId === s.id);
+            const summary = { 'Hadir': 0, 'Terlambat': 0, 'Izin': 0, 'Sakit': 0, 'Dispen': 0, 'Alpa': 0 };
+            studentRecords.forEach(r => { if(summary[r.status] !== undefined) summary[r.status]++; });
+            return { name: s.name, ...summary };
+        });
+
+        outputDiv.innerHTML = `
+             <div class="printable-area">
+                <div class="flex justify-between items-center my-4">
+                    <h4 class="font-bold">Laporan ${type === 'weekly' ? 'Mingguan' : 'Bulanan'} (${formatDate(startDateStr)} - ${formatDate(endDateStr)})</h4>
+                    <div>
+                        <button id="export-report-pdf" class="bg-red-500 text-white px-3 py-1 rounded text-sm">Export PDF</button>
+                        <button id="export-report-excel" class="bg-green-500 text-white px-3 py-1 rounded text-sm ml-2">Export Excel</button>
+                    </div>
+                </div>
+                <table id="report-table" class="w-full text-sm">
+                     <thead class="bg-gray-50"><tr>
+                        ${['Nama Siswa', ...STATUS_OPTIONS].map(h => `<th class="p-2 text-left">${h}</th>`).join('')}
+                    </tr></thead>
+                    <tbody>${reportData.map(d => `
+                        <tr class="border-b">
+                            <td class="p-2">${d.name}</td>
+                            ${STATUS_OPTIONS.map(status => `<td class="p-2">${d[status] || 0}</td>`).join('')}
+                        </tr>
+                    `).join('')}</tbody>
+                </table>
+            </div>
+        `;
+
+        document.getElementById('export-report-pdf').addEventListener('click', () => exportToPDF('report-table', `Laporan ${type}`));
+        document.getElementById('export-report-excel').addEventListener('click', () => exportToExcel('report-table', `Laporan ${type}`));
+    }
+
+    // =================================================================================
+    // USER MANAGEMENT (CRUD) - Refactored for Admin
+    // =================================================================================
+    function renderUserFormModal(role, userId = null) {
+        const isEditing = userId !== null;
+        const user = isEditing ? users.find(u => u.id == userId) : null;
+        const student = isEditing && role === 'student' ? students.find(s => s.id == userId) : null;
+        const isStudent = role === 'student';
+
+        const title = isEditing ? `Edit Data ${isStudent ? 'Siswa' : 'Staf'}` : `Tambah ${isStudent ? 'Siswa' : 'Staf'} Baru`;
+        
+        let formFields = `
+            <div class="mb-4">
+                <label class="block text-sm">Username</label>
+                <input type="text" name="username" class="w-full p-2 border rounded" value="${user ? user.username : ''}" required>
+            </div>
+        `;
+
+        if (isStudent) {
+            formFields = `
+                <div class="mb-4">
+                    <label class="block text-sm">Nama Lengkap</label>
+                    <input type="text" name="name" class="w-full p-2 border rounded" value="${student ? student.name : ''}" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm">Kelas</label>
+                    <input type="text" name="class" class="w-full p-2 border rounded" value="${student ? student.class : 'XII-A'}" required>
+                </div>
+            ` + formFields;
+        } else {
+             formFields += `
+                <div class="mb-4">
+                    <label class="block text-sm">Role</label>
+                    <select name="role" class="w-full p-2 border rounded">
+                        <option value="teacher" ${user && user.role === 'teacher' ? 'selected' : ''}>Guru (Teacher)</option>
+                        <option value="admin" ${user && user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    </select>
+                </div>
+             `;
+        }
+
+        const formHtml = `
+            <div class="p-6">
+                <h3 class="text-xl font-bold mb-4">${title}</h3>
+                <form id="user-form">
+                    <input type="hidden" name="id" value="${user ? user.id : ''}">
+                    <input type="hidden" name="formRole" value="${role}">
+                    ${formFields}
+                    <div class="mb-4">
+                        <label class="block text-sm">Password (${isEditing ? 'kosongkan jika tidak diubah' : 'default: 123'})</label>
+                        <input type="password" name="password" class="w-full p-2 border rounded">
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancel-btn" class="bg-gray-200 px-4 py-2 rounded">Batal</button>
+                        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        modalContent.innerHTML = formHtml;
+        showModal();
+        document.getElementById('user-form').addEventListener('submit', handleSaveUser);
+        document.getElementById('cancel-btn').addEventListener('click', closeModal);
+    }
+
+    function handleSaveUser(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const id = formData.get('id');
+        const formRole = formData.get('formRole'); // student or teacher/admin
+        const username = formData.get('username');
+        let password = formData.get('password');
+        
+        const isStudent = formRole === 'student';
+        const isEditing = !!id;
+
+        if (isEditing) {
+            const userIndex = users.findIndex(u => u.id == id);
+            if(userIndex === -1) return;
+
+            if (isStudent) {
+                const studentIndex = students.findIndex(s => s.id == id);
+                students[studentIndex] = { ...students[studentIndex], name: formData.get('name'), class: formData.get('class') };
+            }
+            
+            users[userIndex] = { ...users[userIndex], username, role: isStudent ? 'student' : formData.get('role') };
+            if (password) users[userIndex].password = password;
+
+        } else { // Adding new user
+            const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+            if(!password) password = '123'; // Default password
+
+            if (isStudent) {
+                students.push({ id: newId, name: formData.get('name'), class: formData.get('class') });
+                users.push({ id: newId, username, password, role: 'student' });
+            } else {
+                 users.push({ id: newId, username, password, role: formData.get('role') });
+            }
+        }
+        closeModal();
+        renderAdminView(isStudent ? 'manage-students' : 'manage-staff');
+    }
+    
+    function handleDeleteUser(userId) {
+        const userToDelete = users.find(u => u.id == userId);
+        if (!userToDelete) return;
+
+        const name = userToDelete.role === 'student' ? students.find(s => s.id == userId)?.name : userToDelete.username;
+
+        showConfirmModal(`Apakah Anda yakin ingin menghapus akun: ${name}?`, () => {
+            users = users.filter(u => u.id != userId);
+            if (userToDelete.role === 'student') {
+                students = students.filter(s => s.id != userId);
+            }
+            renderAdminView(userToDelete.role === 'student' ? 'manage-students' : 'manage-staff');
+            showModal('success', `Akun "${name}" berhasil dihapus.`);
+        });
+    }
+
+    // =================================================================================
+    // MODAL & EXPORT
+    // =================================================================================
+    function showConfirmModal(message, onConfirm) {
+        modalContent.innerHTML = `
+            <div class="p-6">
+                <h3 class="font-bold text-lg mb-4">Konfirmasi Tindakan</h3>
+                <p class="text-gray-600 mb-6">${message}</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="confirm-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded-lg">Batal</button>
+                    <button id="confirm-ok-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg">Ya, Lanjutkan</button>
+                </div>
+            </div>
+        `;
+        showModal();
+        document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+            onConfirm();
+            closeModal();
+        });
+        document.getElementById('confirm-cancel-btn').addEventListener('click', closeModal);
+    }
+
+    function showModal(type, message) {
+        if(type && message) {
+            const icon = type === 'success' ? '✅' : 'ℹ️';
+            modalContent.innerHTML = `<div class="p-6 text-center"><h2 class="text-3xl mb-4">${icon}</h2><p>${message}</p><button id="modal-close" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded">Tutup</button></div>`;
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+        }
+        modal.classList.remove('hidden');
+    }
+    
+    function closeModal() { modal.classList.add('hidden'); modalContent.innerHTML = ''; }
+
+    function exportToPDF(tableId, title) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.autoTable({ html: `#${tableId}` });
+        doc.save(`${title}.pdf`);
+    }
+
+    function exportToExcel(tableId, filename) {
+        const table = document.getElementById(tableId);
+        const wb = XLSX.utils.table_to_book(table, {sheet:"Sheet JS"});
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+    }
+    
+    // =================================================================================
+    // INITIALIZATION
+    // =================================================================================
+    function init() {
+        generateMockData();
+        // Menghapus data absensi Rina untuk hari ini agar statusnya kembali menjadi "Belum Absen"
+        attendanceRecords = attendanceRecords.filter(record => !(record.studentId === 1 && record.date === today()));
+        currentDateEl.textContent = formatDate(new Date());
+
+        loginForm.addEventListener('submit', handleLogin);
+        logoutBtn.addEventListener('click', handleLogout);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        tabContainer.addEventListener('click', (e) => {
+            if (e.target.matches('.tab-btn')) {
+                renderTeacherView(e.target.dataset.tab);
+            }
+        });
+    }
+
+    init();
+});
+</script>
+
+</body>
+</html>
