@@ -61,19 +61,30 @@
         <!-- Login View -->
         <div id="login-view" class="flex-grow flex items-center justify-center p-4 fade-in">
             <div class="bg-white max-w-md w-full p-8 rounded-xl shadow-lg">
-                <h2 class="text-2xl font-bold text-center mb-6">Login Sistem Absensi</h2>
+                <h2 class="text-2xl font-bold text-center mb-6">Absensi Senior High School SMANIDA KU</h2>
+                
                 <form id="login-form">
                     <div class="mb-4">
                         <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
                         <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
                     </div>
-                    <div class="mb-6">
+                    <div class="mb-4">
                         <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Sandi</label>
                         <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
                     </div>
+                    
+                    <div class="my-6 text-center">
+                        <p class="text-gray-500 mb-3 text-sm">Atau login cepat sebagai:</p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" id="quick-login-teacher" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg">Guru</button>
+                            <button type="button" id="quick-login-student" class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg">Siswa</button>
+                            <button type="button" id="quick-login-admin" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg">Admin</button>
+                        </div>
+                    </div>
+
                     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-transform duration-200 hover:scale-105">Login</button>
                     <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
-                   </form>
+                </form>
             </div>
         </div>
 
@@ -125,13 +136,23 @@
     // =================================================================================
 
     let users = [
-        { id: 1, username: 'rina', password: '123', role: 'student' },
+        { id: 1, username: 'indira', password: '123', role: 'student' }, // Rina diganti Indira
+        { id: 2, username: 'budi', password: '123', role: 'student' },
+        { id: 3, username: 'andi', password: '123', role: 'student' },
+        { id: 4, username: 'tiara', password: '123', role: 'student' },   // Siswa baru
+        { id: 5, username: 'putri', password: '123', role: 'student' },   // Siswa baru
+        { id: 8, username: 'akbar', password: '123', role: 'student' },   // Siswa baru
         { id: 6, username: 'guru', password: 'guru123', role: 'teacher' },
         { id: 7, username: 'admin', password: 'admin123', role: 'admin' }
     ];
 
     let students = [
-        { id: 1, name: 'Rina Amelia', class: 'XII-A' },
+        { id: 1, name: 'Indira Larasati', class: 'XII-A' }, // Rina diganti Indira
+        { id: 2, name: 'Budi Santoso', class: 'XII-B' },
+        { id: 3, name: 'Andi Pratama', class: 'XII-C' },
+        { id: 4, name: 'Tiara Puspita', class: 'XII-A' },   // Siswa baru
+        { id: 5, name: 'Putri Ayu', class: 'XII-B' },       // Siswa baru
+        { id: 8, name: 'Akbar Maulana', class: 'XII-C' },   // Siswa baru
     ];
 
     let attendanceRecords = []; // { studentId, date(YYYY-MM-DD), status, timestamp, message, photoUrl }
@@ -573,10 +594,12 @@
     // =================================================================================
     // RENDER FUNCTIONS - ADMIN
     // =================================================================================
-    function renderAdminView(activeTab = 'daily-recap') {
+    function renderAdminView(activeTab = 'dashboard') {
+        Object.values(activeChartInstances).forEach(chart => chart.destroy());
         adminView.innerHTML = `
             <div class="mb-6 border-b border-gray-200">
                 <nav class="-mb-px flex space-x-6" id="admin-tabs">
+                    <button data-tab="dashboard" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button>
                     <button data-tab="daily-recap" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Rekap Harian</button>
                     <button data-tab="manage-students" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Kelola Siswa</button>
                     <button data-tab="manage-staff" class="admin-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Kelola Guru & Admin</button>
@@ -597,15 +620,47 @@
             btn.classList.toggle('text-gray-500', btn.dataset.tab !== activeTab);
         });
         
-        if (activeTab === 'daily-recap') {
-            renderAdminDailyRecapTab();
-        } else if(activeTab === 'manage-students') {
-            renderUserManagementTable('student');
-        } else {
-            renderUserManagementTable('staff');
+        switch (activeTab) {
+            case 'dashboard':
+                renderAdminDashboardTab();
+                break;
+            case 'daily-recap':
+                renderAdminDailyRecapTab();
+                break;
+            case 'manage-students':
+                renderUserManagementTable('student');
+                break;
+            case 'manage-staff':
+                renderUserManagementTable('staff');
+                break;
         }
     }
     
+    function renderAdminDashboardTab() {
+        const targetDiv = document.getElementById('admin-tab-content');
+        const todaysRecords = attendanceRecords.filter(r => r.date === today());
+        const stats = { 'Hadir': 0, 'Terlambat': 0, 'Izin': 0, 'Sakit': 0, 'Dispen': 0, 'Alpa': 0 };
+        todaysRecords.forEach(r => { if(stats[r.status] !== undefined) stats[r.status]++; });
+        const present = stats['Hadir'] + stats['Terlambat'];
+        const absent = students.length - todaysRecords.length + stats['Alpa'];
+
+        targetDiv.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Total Siswa</p><p class="text-2xl font-bold">${students.length}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Hadir Hari Ini</p><p class="text-2xl font-bold text-green-600">${present}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Terlambat</p><p class="text-2xl font-bold text-yellow-600">${stats.Terlambat}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow"><p class="text-sm text-gray-500">Tidak Hadir</p><p class="text-2xl font-bold text-red-600">${absent + stats.Izin + stats.Sakit + stats.Dispen}</p></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow flex flex-col h-80"><h3 class="font-bold mb-4">Ringkasan Kehadiran Hari Ini</h3><div class="relative flex-1"><canvas id="admin-daily-pie-chart"></canvas></div></div>
+                <div class="bg-white p-6 rounded-lg shadow flex flex-col h-80"><h3 class="font-bold mb-4">Tren Kehadiran (5 Hari Terakhir)</h3><div class="relative flex-1"><canvas id="admin-weekly-bar-chart"></canvas></div></div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow mt-6"><h3 class="font-bold mb-4">Notifikasi Terbaru</h3><div id="admin-notifications"></div></div>
+        `;
+        renderAdminDashboardCharts(stats);
+        renderNotificationsForAdmin();
+    }
+
     function renderAdminDailyRecapTab() {
         const targetDiv = document.getElementById('admin-tab-content');
         targetDiv.innerHTML = `
@@ -753,11 +808,76 @@
         });
     }
 
+    function renderAdminDashboardCharts(stats) {
+        Object.values(activeChartInstances).forEach(chart => chart.destroy()); 
+        
+        const dailyCtx = document.getElementById('admin-daily-pie-chart').getContext('2d');
+        activeChartInstances.adminDaily = new Chart(dailyCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Dispen', 'Alpa/Belum Hadir'],
+                datasets: [{
+                    data: [stats.Hadir, stats.Terlambat, stats.Izin, stats.Sakit, stats.Dispen, students.length - (stats.Hadir + stats.Terlambat + stats.Izin + stats.Sakit + stats.Dispen)],
+                    backgroundColor: ['#10B981', '#F59E0B', '#3B82F6', '#F97316', '#8B5CF6', '#EF4444']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        
+        const weeklyLabels = [];
+        const weeklyData = [];
+        for (let i = 4; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().slice(0, 10);
+            weeklyLabels.push(date.toLocaleDateString('id-ID', { weekday: 'short' }));
+            const presentCount = attendanceRecords.filter(r => r.date === dateStr && (r.status === 'Hadir' || r.status === 'Terlambat')).length;
+            weeklyData.push(presentCount);
+        }
+
+        const weeklyCtx = document.getElementById('admin-weekly-bar-chart').getContext('2d');
+        activeChartInstances.adminWeekly = new Chart(weeklyCtx, {
+            type: 'bar',
+            data: {
+                labels: weeklyLabels,
+                datasets: [{
+                    label: 'Jumlah Siswa Hadir',
+                    data: weeklyData,
+                    backgroundColor: '#4f46e5'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
     // =================================================================================
     // NOTIFICATIONS & REPORTS
     // =================================================================================
     function renderNotifications() {
         const container = document.getElementById('notifications');
+        const todaysLate = attendanceRecords.filter(r => r.date === today() && r.status === 'Terlambat');
+        const todaysWithProof = attendanceRecords.filter(r => r.date === today() && (r.status === 'Sakit' || r.status === 'Izin' || r.status === 'Dispen'));
+        
+        let html = '';
+        todaysWithProof.forEach(r => {
+            const student = students.find(s => s.id === r.studentId);
+             html += `<p class="text-sm border-b py-2"><span class="font-bold text-blue-600">[LAPORAN]</span> ${student.name} mengajukan <strong>${r.status}</strong>. <button data-studentid="${student.id}" data-date="${today()}" class="view-proof-btn text-indigo-600 hover:underline">Lihat</button></p>`;
+        });
+        todaysLate.forEach(r => {
+            const student = students.find(s => s.id === r.studentId);
+            html += `<p class="text-sm border-b py-2"><span class="font-bold text-yellow-600">[TERLAMBAT]</span> ${student.name} absen pada pukul ${formatTime(r.timestamp)}.</p>`;
+        });
+
+        container.innerHTML = html || '<p class="text-sm text-gray-500">Tidak ada notifikasi baru.</p>';
+        
+        container.querySelectorAll('.view-proof-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            const { studentid, date } = e.target.dataset;
+            showProofModal(studentid, date);
+        }));
+    }
+
+    function renderNotificationsForAdmin() {
+        const container = document.getElementById('admin-notifications');
         const todaysLate = attendanceRecords.filter(r => r.date === today() && r.status === 'Terlambat');
         const todaysWithProof = attendanceRecords.filter(r => r.date === today() && (r.status === 'Sakit' || r.status === 'Izin' || r.status === 'Dispen'));
         
@@ -1015,6 +1135,23 @@
             if (e.target.matches('.tab-btn')) {
                 renderTeacherView(e.target.dataset.tab);
             }
+        });
+
+        // Quick Login Buttons
+        document.getElementById('quick-login-teacher').addEventListener('click', () => {
+            usernameInput.value = 'guru';
+            passwordInput.value = 'guru123';
+            loginForm.requestSubmit();
+        });
+        document.getElementById('quick-login-student').addEventListener('click', () => {
+            usernameInput.value = 'indira'; // Default student diganti ke indira
+            passwordInput.value = '123';
+            loginForm.requestSubmit();
+        });
+        document.getElementById('quick-login-admin').addEventListener('click', () => {
+            usernameInput.value = 'admin';
+            passwordInput.value = 'admin123';
+            loginForm.requestSubmit();
         });
     }
 
