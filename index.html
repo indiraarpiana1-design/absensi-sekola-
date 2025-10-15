@@ -45,9 +45,7 @@
         <!-- Header -->
         <header class="bg-white shadow-md p-4 print:hidden">
             <div class="container mx-auto flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <!-- LOGO DIUBAH DI SINI -->
-                    <img src="https://sman1dramaga.sch.id/wp-content/uploads/2023/07/logo-sman-1-dramaga-300x300.png" alt="Logo SMAN 1 Dramaga" class="h-10 w-10">
+                <div class="flex items-center">
                     <h1 class="text-2xl font-bold text-gray-800">Senior High School</h1>
                 </div>
                 <div id="header-info" class="text-right hidden">
@@ -190,7 +188,7 @@
     const tabContent = document.getElementById('tab-content');
     const modal = document.getElementById('modal');
     const modalContent = document.getElementById('modal-content');
-
+    
     // =================================================================================
     // UTILITY FUNCTIONS
     // =================================================================================
@@ -748,7 +746,10 @@
             <div class="bg-white p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold">Manajemen Akun ${title}</h3>
-                    <button id="add-user-btn" data-role="${roleToAdd}" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Tambah ${title} Baru</button>
+                    <div>
+                        <button id="add-user-btn" data-role="${roleToAdd}" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Tambah ${title} Baru</button>
+                        
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -1124,6 +1125,7 @@
     // =================================================================================
     function init() {
         generateMockData();
+        
         // Menghapus data absensi Rina untuk hari ini agar statusnya kembali menjadi "Belum Absen"
         attendanceRecords = attendanceRecords.filter(record => !(record.studentId === 1 && record.date === today()));
         currentDateEl.textContent = formatDate(new Date());
@@ -1162,3 +1164,11 @@
 </body>
 
 </html>
+
+
+
+
+
+
+
+
